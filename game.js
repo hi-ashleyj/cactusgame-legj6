@@ -121,15 +121,23 @@ let Asset = function(id, options) {
         if (options.crop) {
             this.crop = [options.crop.x, options.crop.y, options.crop.w, options.crop.h];
         }
-        
-    } else if (options.primitive) {
-        if (options.primitive == "rectangle") {
+    }
+
+    this.id = id;
+
+    Asset.list[id] = this;
+    return this;
+};
+
+Asset.Primitive = function(id, options) {
+    if (options.type) {
+        if (options.type == "rectangle") {
             this.type = "rect";
-        } else if (options.primitive == "circle") {
+        } else if (options.type == "circle") {
             this.type = "arc";
             this.angleFrom = 0;
             this.angleTo = 360;
-        } else if (options.primitive == "arc") {
+        } else if (options.type == "arc") {
             this.type = "arc";
             this.angleFrom = options.angleFrom;
             this.angleTo = options.angleTo;
@@ -137,22 +145,6 @@ let Asset = function(id, options) {
 
         this.fill = (options.fill) ? options.fill : null;
         this.stroke = (options.stroke) ? options.stroke : null;
-    }
-
-    if (options.crop) {
-        this.crop = [options.crop.x, options.crop.y, options.crop.w, options.crop.h];
-    }
-
-    if (options.layer) {
-        this.layer = options.layer;
-    }
-
-    if (options.raw) {
-        Object.assign(this, options.raw);
-    }
-
-    if (options.update) {
-        Object.assign(this, options.update);
     }
 
     this.id = id;
@@ -173,51 +165,49 @@ Asset.center = function(x, y, w, h) {
     return [x - (w / 2), y - (h / 2), w, h];
 };
 
-Asset.prototype.draw = function() {
+Asset.prototype.draw = function(layer, x, y, w, h) {
     switch (this.type) {
         case ("image"): {
             if (this.crop) {
-                this.layer.ctx.image(this.resource, ...this.crop, this.x, this.y, this.w, this.h);
+                layer.ctx.image(this.resource, ...this.crop, x, y, w, h);
             } else {
-                this.layer.ctx.image(this.resource, this.x, this.y, this.w, this.h);
+                layer.ctx.image(this.resource, x, y, w, h);
             }
-        }
-        case ("rect"): {
-            if (this.fill) {
-                this.layer.ctx.fillStyle = this.fill;
-                this.layer.ctx.fillRect(this.x, this.y, this.w, this.h);
-            }
-            if (this.stroke) {
-                this.layer.ctx.fillStyle = this.stroke;
-                this.layer.ctx.strokeRect(this.x, this.y, this.w, this.h);
-            }
-        }
-        case ("arc"): {
-            let r = (this.w + this.h) / 4;
-            this.layer.ctx.beginPath();
-            this.layer.ctx.arc(this.x, this.y, r, ((this.angleFrom - 90) * Math.PI / 180), ((this.angleTo - 90) * Math.PI / 180));
-            this.layer.ctx.lineTo(this.x, this.y);
-            if (this.fill) {
-                this.layer.ctx.fillStyle = this.fill;
-                this.layer.ctx.fill();
-            }
-            if (this.stroke) {
-                this.layer.ctx.fillStyle = this.stroke;
-                this.layer.ctx.stroke();
-            }
+            break;
         }
     }
 };
 
-Asset.prototype.position = function(x, y, w, h) {
-    this.x = x;
-    this.y = y;
-    if (w) { this.w = w; }
-    if (h) { this.h = h; }
-};
-
-Asset.prototype.clone = function(id, changes) {
-    return new Asset(id, { raw: this, update: changes });
+Asset.Primitive.prototype.draw = function(layer, x, y, w, h) {
+    switch (this.type) {
+        case ("rect"): {
+            if (this.fill) {
+                layer.ctx.fillStyle = this.fill;
+                layer.ctx.fillRect(x, y, w, h);
+            }
+            if (this.stroke) {
+                layer.ctx.fillStyle = this.stroke;
+                layer.ctx.strokeRect(x, y, w, h);
+            }
+            break;
+        }
+        case ("arc"): {
+            let r = (this.w + this.h) / 4;
+            layer.ctx.beginPath();
+            layer.ctx.arc(x, y, r, ((this.angleFrom - 90) * Math.PI / 180), ((this.angleTo - 90) * Math.PI / 180));
+            layer.ctx.lineTo(x, y);
+            layer.ctx.closePath();
+            if (this.fill) {
+                layer.ctx.fillStyle = this.fill;
+                layer.ctx.fill();
+            }
+            if (this.stroke) {
+                layer.ctx.fillStyle = this.stroke;
+                layer.ctx.stroke();
+            }
+            break;
+        }
+    }
 };
 
 let Player = {};
@@ -248,6 +238,7 @@ let Layer = function(id, options) {
     Layer.list[id] = this;
     return this;
 };
+
 Layer.list = {};
 
 Layer.drawAll = function() {
