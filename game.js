@@ -218,6 +218,7 @@ let Layer = function(id, options) {
     this.level = options.level;
     this.canvas = john;
     this.ctx = this.canvas.getContext("2d");
+    this.ctx.imageSmoothingEnabled = false;
     this.targets = [];
 
     Layer.list[id] = this;
@@ -299,7 +300,18 @@ Animate.property.prototype.value = function() {
     return value; 
 };
 
+let TileMap = function(options) {
+    this.scaleX = options.scaleX;
+    this.scaleY = options.scaleY;
+    this.size = options.size;
+    this.map = new Array(this.size);
 
+    for (let i = 0; i < this.size; i ++) {
+        this.map[i] = new Asset(Object.assign({ crop: { x: i * this.scaleX, y: 0, w: this.scaleX, h: this.scaleY } }, options));
+    }
+
+    return this;
+};
 
 let GameObject = function(options) {
     
