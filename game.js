@@ -109,7 +109,7 @@ Controller.setup = function() {
     document.addEventListener("keyup", Controller.handleKeyboard, false);
 };
 
-let Asset = function(id, options) {
+let Asset = function(options) {
     if (options.image) {
         this.type = "image";
         this.location = options.image;
@@ -123,9 +123,6 @@ let Asset = function(id, options) {
         }
     }
 
-    this.id = id;
-
-    Asset.list[id] = this;
     return this;
 };
 
@@ -147,19 +144,11 @@ Asset.Primitive = function(id, options) {
         this.stroke = (options.stroke) ? options.stroke : null;
     }
 
-    this.id = id;
-
-    Asset.list[id] = this;
     return this;
 };
 
-Asset.list = {};
 Asset.loading = [];
 Asset.locations = {};
-
-Asset.get = function(id) {
-    return Asset.list[id];
-};
 
 Asset.center = function(x, y, w, h) {
     return [x - (w / 2), y - (h / 2), w, h];
@@ -209,10 +198,6 @@ Asset.Primitive.prototype.draw = function(layer, x, y, w, h) {
         }
     }
 };
-
-let Player = {};
-
-let Scene = {};
 
 let Sound = function(layer, description, asset) {
     // TODO: handle converting asset into something playable
@@ -267,21 +252,18 @@ Layer.prototype.draw = function() {
 
 let Animate = {};
 Animate.last = -1;
+Animate.stamp = -1;
 Animate.targets = [];
 
 Animate.tick = function(stamp) {
-    if (Animate.last < 0) {
-        Animate.last = stamp;
+    if (Animate.stamp < 0) {
+        Animate.stamp = stamp;
     }
-    for (let i in Animate.targets) {
-        Animate.targets[i].tick(stamp);
-    }
-    Animate.last = stamp;
+    Animate.last = Animate.stamp;
+    Animate.stamp = stamp;
 };
 
-Animate.property = function(parent, name, time, steps, count) {
-    this.parent = parent;
-    this.name = name;
+Animate.property = function(time, steps, count) {
     this.time = time;
     this.steps = steps;
     this.points = Object.keys(this.steps).map((val) => { return parseFloat(val); }).sort((a, b) => { return a - b });
@@ -293,12 +275,13 @@ Animate.property = function(parent, name, time, steps, count) {
     return this;
 };
 
-Animate.property.prototype.tick = function(stamp) {
+Animate.property.prototype.value = function() {
     if (this.once) {
-        this.offset = stamp;
+        this.offset = Animate.stamp;
         this.once = false;
     }
-    let factor = ((stamp - this.offset) % this.time) / this.time;
+    let factor = ((Animate.stamp - this.offset) % this.time) / this.time;
+    if (Math.floor(((Animate.stamp - this.offset) / this.time)) >= this.count) { return null; }
     if (this.points < 2) {
         return;
     }
@@ -313,8 +296,24 @@ Animate.property.prototype.tick = function(stamp) {
     }
 
     let value = this.steps[from] + ((this.steps[to] - this.steps[from]) * ((factor - from) / (to - from)));
-    this.parent[this.name] = value; 
+    return value; 
 };
+
+
+
+let GameObject = function(options) {
+    
+};
+
+let Character = function(options) {
+
+};
+
+let Player = {};
+
+let Scene = {};
+
+
 
 Game.timeouts = [];
 
@@ -322,7 +321,23 @@ Game.wait = function(callback, delay) {
     Game.timeouts.push({ callback, delay });
 };
 
+Game.events = [];
+
+Game.on = function(type, call) {
+    Game.events.push({ type, call });
+};
+
+Game.fire = function(type, data) {
+    for (let e of Game.events) {
+        if (e.type == type) {
+            e.call((data) ? data : null);
+        }
+    }
+};
+
 Game.loop = function(time) {
+    Animate.tick(time);
+
     for (let i = Game.timeouts.length - 1; i >= 0; i--) {
         if (Game.timeouts[i].start) {
             if (time >= Game.timeouts[i].start + Game.timeouts[i].delay) {
@@ -334,9 +349,11 @@ Game.loop = function(time) {
         }
     }
 
-    Animate.tick(time);
+    Game.fire("loop");
 
     Layer.drawAll();
+
+    Game.fire("postdraw");
 
     window.requestAnimationFrame(Game.loop);
 };
