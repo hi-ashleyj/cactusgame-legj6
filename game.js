@@ -404,6 +404,13 @@ GameObject.prototype.move = function(x, y, w, h) {
     if (typeof h == "number") { this.h += h; };
 };
 
+GameObject.prototype.position = function(x, y, w, h) {
+    if (typeof x == "number") { this.x = x; };
+    if (typeof y == "number") { this.y = y; };
+    if (typeof w == "number") { this.w = w; };
+    if (typeof h == "number") { this.h = h; };
+};
+
 let Text = function(options) {
     this.text = options.text;
     this.size = options.size;
