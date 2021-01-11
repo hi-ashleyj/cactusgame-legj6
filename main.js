@@ -21,9 +21,9 @@ LevelMap.prototype.draw = function(layer) {
     fromX -= Math.ceil(xPos / this.size); // calculates number of remaining tiles to fill the screen, then remembers that index
     xPos -= (Math.ceil(xPos / this.size) * this.size); // Calcuates position of that tile relative to screen space
 
-    let yPos = Game.width / 2; // For Y axis
+    let yPos = Game.height / 2; // For Y axis
     let fromY = Math.floor(this.y / this.size); 
-    yPos -= this.x % this.size; 
+    yPos -= this.y % this.size; 
 
     fromY -= Math.ceil(yPos / this.size); 
     yPos -= (Math.ceil(yPos / this.size) * this.size);
@@ -38,7 +38,7 @@ LevelMap.prototype.draw = function(layer) {
         let tileX = 0 + fromX;
 
         while (localX < Game.width) {
-            if (this.map[tileY][tileX] !== "-") {
+            if (this.map[tileY] && this.map[tileY][tileX] && this.map[tileY][tileX] !== "-") {
                 this.tiles[this.map[tileY][tileX]].draw(layer, localX, localY, this.size, this.size);
             }
 
@@ -66,15 +66,56 @@ let hud = new Layer("hud", { level: 3 });
 
 let state = "loading";
 
-let speed = 10;
+let speed = 500;
 
+let levelAssets = {
+    "0": (new Asset({ image: "png/fill.png" })),
+    "T": (new Asset({ image: "png/top.png" })),
+    "A": (new Asset({ image: "png/left.png" })),
+    "B": (new Asset({ image: "png/right.png" })),
+    "I": (new Asset({ image: "png/insidel.png" })),
+    "J": (new Asset({ image: "png/insider.png" })),
+    "K": (new Asset({ image: "png/insetl.png" })),
+    "L": (new Asset({ image: "png/insetr.png" })),
+};
 
+let testMap = new LevelMap(levelAssets, [
+    "0000B-------------------------A00000",
+    "0000B-------------------------A00000",
+    "0000B-------------------------A00000",
+    "0000B-------------------------A00000",
+    "0000B-------------------------A00000",
+    "0000KITTTTTTTTTTTTTTTTTTTTTTTJL00000",
+    "000000000000000000000000000000000000",
+    "000000000000000000000000000000000000",
+    "000000000000000000000000000000000000",
+    "000000000000000000000000000000000000",
+    "000000000000000000000000000000000000",
+    "000000000000000000000000000000000000",
+], { x: 1000, y: 1000, size: 256});
 
 Game.on("loop", ({ stamp, delta }) => {
-
-
-
-
+    switch (state) {
+        case ("loading"): {
+            if (Asset.loading.length == 0) {
+                mapLayer.assign(testMap);
+                state = "game";
+            }
+            break;
+        }
+        case ("game"): {
+            let moveX = 0;
+            let moveY = 0;
+            if (Controller.isPressed("key_a")) { moveX -= 1 }
+            if (Controller.isPressed("key_d")) { moveX += 1 }
+            if (Controller.isPressed("key_w")) { moveY -= 1 }
+            if (Controller.isPressed("key_s")) { moveY += 1 }
+            if (Controller.isPressed("key_shift")) { moveX *= "2"; moveY *= 2}
+        
+            testMap.move(moveX * speed * (delta / 1000), moveY * speed * (delta / 1000));
+            break;
+        }
+    }
 });
 
 Game.start();

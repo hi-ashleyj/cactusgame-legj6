@@ -202,9 +202,9 @@ Asset.prototype.draw = function(layer, x, y, w, h) {
     switch (this.type) {
         case ("image"): {
             if (this.crop) {
-                layer.ctx.image(this.resource, ...this.crop, x, y, w, h);
+                layer.ctx.drawImage(this.resource, ...this.crop, x, y, w, h);
             } else {
-                layer.ctx.image(this.resource, x, y, w, h);
+                layer.ctx.drawImage(this.resource, x, y, w, h);
             }
             break;
         }
