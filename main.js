@@ -1,77 +1,58 @@
-Game.create({ width: 1920, height: 1080 });
+Game.create({ width: 1920, height: 1080 }); // Initialize the game
 
-let LevelMap = function(tileMap, levelMap, position) {
-    this.x = position.x;
-    this.y = position.y;
-    this.size = position.size;
-    this.tiles = tileMap;
-    this.sizeY = levelMap.length;
-    this.sizeX = levelMap[0].length;
-    this.map = (new Array(this.sizeY));
-    for (let i = 0; i < this.sizeY; i ++) {
-        this.map[i] = levelMap[i].split("");
-    }
-};
+new Asset.Font("Press Start", "ttf/pressstart.ttf"); // Preload Assets 
 
-LevelMap.prototype.draw = function(layer) {
-    let xPos = Game.width / 2; // Calculates remaining pixels to fill
-    let fromX = Math.floor(this.x / this.size); // Calculates which tile the player is standing in
-    xPos -= this.x % this.size; // Aligns xPos to the left side of that tile
-
-    fromX -= Math.ceil(xPos / this.size); // calculates number of remaining tiles to fill the screen, then remembers that index
-    xPos -= (Math.ceil(xPos / this.size) * this.size); // Calcuates position of that tile relative to screen space
-
-    let yPos = Game.height / 2; // For Y axis
-    let fromY = Math.floor(this.y / this.size); 
-    yPos -= this.y % this.size; 
-
-    fromY -= Math.ceil(yPos / this.size); 
-    yPos -= (Math.ceil(yPos / this.size) * this.size);
-
-    // --- Prepare for heck
-
-    let localY = 0 + yPos;
-    let tileY = 0 + fromY;
-
-    while (localY < Game.height) {
-        let localX = 0 + xPos;
-        let tileX = 0 + fromX;
-
-        while (localX < Game.width) {
-            if (this.map[tileY] && this.map[tileY][tileX] && this.map[tileY][tileX] !== "-") {
-                this.tiles[this.map[tileY][tileX]].draw(layer, localX, localY, this.size, this.size);
-            }
-
-            localX += this.size;
-            tileX += 1;
-        }
-
-        localY += this.size;
-        tileY += 1;
-    }
-};
-
-LevelMap.prototype.move = function(x, y, size) {
-    if (typeof x == "number") { this.x += x; };
-    if (typeof y == "number") { this.y += y; };
-    if (typeof size == "number") { this.size += size; };
-}
-
-LevelMap.prototype.position = function(x, y, size) {
-    if (typeof x == "number") { this.x = x; };
-    if (typeof y == "number") { this.y = y; };
-    if (typeof size == "number") { this.size = size; };
-}
-
-let gameScale = 192;
+let gameScale = 192; // Setup global stuff
 let state = "loading";
+let loading = true;
 
-new Asset.Font("Press Start", "ttf/pressstart.ttf");
-
-let backgroundLayer = new Layer("background", { level: 0 });
+let backgroundLayer = new Layer("background", { level: 0 }); // Prepare Layers
 let mapLayer = new Layer("map", { level: 1 });
 let detailsLayer = new Layer("details", { level: 2 });
-let hud = new Layer("hud", { level: 3 });
+let hudLayer = new Layer("hud", { level: 3 });
+
+// ---- LOADING SCREEN ---- //
+
+let loadingAnimateProperty;
+let loadingSpinner = new Asset.Primitive({ type: "arc", fill: "#ffffff", angleFrom: 0, angleTo: 180 });
+
+let loadingScreen = function() {
+    Layer.purgeAll();
+    backgroundLayer.assign((new GameObject({ asset: new Asset.Primitive({ type: "rectangle", fill: "#222222" }), x: 0, y: 0, w: Game.width, h: Game.height })));
+    hudLayer.assign(new GameObject({ asset: loadingSpinner, x: Game.width / 2, y: Game.height / 2, w: 200, h: 200 }));
+
+    loadingAnimateProperty = new Animate.property(1000, {0: 0, 1: 360}, Infinity);
+};
+
+// ---- START SCREEN ---- //
+
+let loadStartScreen = function() {
+    Layer.purgeAll();
+    let startBDG = new GameObject({ asset: (new Asset({ image: "png/start.png" })), x: 0, y: 0, w: Game.width, h: Game.height });
+    let startHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 100, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
+    let startCTA = new GameObject({ asset: (new Text({ text: "PRESS START TO BEGIN", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
+
+    backgroundLayer.assign(startBDG);
+    hudLayer.assign(startHeader, startCTA);
+    state = "start";
+};
+
+// ---- GAME SCREEN ---- //
+
+let currentMap;
+let gravity = 2; // Setup game globals
+let acceleration = 4;
+let friction = 4;
+let maxSpeed = 1.8;
+let speed = gameScale * 2;
+let moveX = 0;
+let moveY = 0;
+let touchingGround = false;
+
+let levelBackground = new GameObject({ asset: (new Asset({ image: "png/bg.png"})), x: 0, y: 0, w: Game.width, h: Game.height}); // Setup resources
+let mapAliveBush = new TileMap({ image: "png/decoration/alivebush.png", scaleX: 32, scaleY: 32, size: 2});
+let mapBones = new TileMap({ image: "png/decoration/bones.png", scaleX: 32, scaleY: 32, size: 2});
+let mapBigtree = new TileMap({ image: "png/decoration/bigtree.png", scaleX: 32, scaleY: 32, size: 6});
 
 let cactusAnimation = new Animate.Sequence({ 
     idle: {
@@ -87,64 +68,75 @@ let cactusBro = new GameObject({ asset: cactusAnimation });
 
 cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, gameScale, gameScale));
 
-let levelBackground = new GameObject({ asset: (new Asset({ image: "png/bg.png"})), x: 0, y: 0, w: Game.width, h: Game.height});
+let levels = [ // Level Design
+    {
+        assets: {
+            "O": (new Asset({ image: "png/world/fill.png" })),
+            "T": (new Asset({ image: "png/world/top.png" })),
+            "A": (new Asset({ image: "png/world/left.png" })),
+            "B": (new Asset({ image: "png/world/right.png" })),
+            "I": (new Asset({ image: "png/world/insidel.png" })),
+            "J": (new Asset({ image: "png/world/insider.png" })),
+            "K": (new Asset({ image: "png/world/insetl.png" })),
+            "L": (new Asset({ image: "png/world/insetr.png" })),
+        
+            "y": (new Asset({ image: "png/decoration/grassy.png" })),
+            "b": (new Asset({ image: "png/decoration/grassb.png" })),
+            "z": (new Asset({ image: "png/decoration/rock.png" })),
+            "f": mapAliveBush.map[0],
+            "g": mapAliveBush.map[1],
+            "d": (new Asset({ image: "png/decoration/deadbush.png" })),
+            "w": mapBones.map[0],
+            "x": mapBones.map[1],
+            "m": mapBigtree.map[0],
+            "n": mapBigtree.map[1],
+            "o": mapBigtree.map[2],
+            "p": mapBigtree.map[3],
+            "q": mapBigtree.map[4],
+            "r": mapBigtree.map[5],
+        },
+        map: [
+            "OOOOB-------------------------AOOOOO",
+            "OOOOB-------------------------AOOOOO",
+            "OOOOB-------------------------AOOOOO",
+            "OOOOB-----------mno-----------AOOOOO",
+            "OOOOB-y---b-d-z-pqr-fg--wx----AOOOOO",
+            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTJLOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+        ],
+        start: {
+            x: gameScale * 6, 
+            y: gameScale * 4, 
+            size: gameScale
+        }
+    }
+]
 
-let aliveBush = new TileMap({ image: "png/decoration/alivebush.png", scaleX: 32, scaleY: 32, size: 2});
-let bones = new TileMap({ image: "png/decoration/bones.png", scaleX: 32, scaleY: 32, size: 2});
-let bigtree = new TileMap({ image: "png/decoration/bigtree.png", scaleX: 32, scaleY: 32, size: 6});
+let levelMaps = [];
 
-let levelAssets = {
-    "O": (new Asset({ image: "png/world/fill.png" })),
-    "T": (new Asset({ image: "png/world/top.png" })),
-    "A": (new Asset({ image: "png/world/left.png" })),
-    "B": (new Asset({ image: "png/world/right.png" })),
-    "I": (new Asset({ image: "png/world/insidel.png" })),
-    "J": (new Asset({ image: "png/world/insider.png" })),
-    "K": (new Asset({ image: "png/world/insetl.png" })),
-    "L": (new Asset({ image: "png/world/insetr.png" })),
+for (let i = 0; i < levels.length; i++) {
+    levelMaps.push(new LevelMap(levels[i].assets, levels[i].map, levels[i].start)); // Pre create all the LevelMap's
+}
 
-    "y": (new Asset({ image: "png/decoration/grassy.png" })),
-    "b": (new Asset({ image: "png/decoration/grassb.png" })),
-    "z": (new Asset({ image: "png/decoration/rock.png" })),
-    "f": aliveBush.map[0],
-    "g": aliveBush.map[1],
-    "d": (new Asset({ image: "png/decoration/deadbush.png" })),
-    "w": bones.map[0],
-    "x": bones.map[1],
-    "m": bigtree.map[0],
-    "n": bigtree.map[1],
-    "o": bigtree.map[2],
-    "p": bigtree.map[3],
-    "q": bigtree.map[4],
-    "r": bigtree.map[5],
+let loadLevel = function(number) {
+    Layer.purgeAll();
+    currentMap = levelMaps[number];
+    currentMap.position(levels[number].start.x, levels[number].start.y);
+    moveX = 0;
+    moveY = 0;
+    backgroundLayer.assign(levelBackground);
+    mapLayer.assign(currentMap);
+    detailsLayer.assign(cactusBro);
+    state = "game";
+    cactusAnimation.switch("idle");
 };
 
-let currentMap = new LevelMap(levelAssets, [
-    "OOOOB-------------------------AOOOOO",
-    "OOOOB-------------------------AOOOOO",
-    "OOOOB-------------------------AOOOOO",
-    "OOOOB-----------mno-----------AOOOOO",
-    "OOOOB-y---b-d-z-pqr-fg--wx----AOOOOO",
-    "OOOOKITTTTTTTTTTTTTTTTTTTTTTTJLOOOOO",
-    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-], { x: gameScale * 6, y: gameScale * 4, size: gameScale});
-
-let moveX = 0;
-let moveY = 0;
-let gravity = 2;
-let acceleration = 4;
-let friction = 4;
-let maxSpeed = 1.8;
-let speed = gameScale * 2;
-
-
-let touchingGround = false;
-
+// Movement/Physics/Collision Setup
 collisionPoints = {
     xn: -(gameScale / 2),
     xp: (gameScale / 2),
@@ -152,38 +144,97 @@ collisionPoints = {
     yp: (gameScale / 2),
 }
 
-let loading = true;
+let movementGameLoop = function(delta) {
+    if (delta > 50) { return; }
+    let forceX = 0;
+    let sprint = 1;
+    if (Controller.isPressed("key_a")) { forceX -= 1 }
+    if (Controller.isPressed("key_d")) { forceX += 1 }
+    if (forceX == 0 && Math.abs(moveX) > 0.001) { 
+        if (moveX > friction * (delta / 1000) ) { moveX -= friction * (delta / 1000); }
+        else if (moveX < friction * (delta / 1000) * -1 ) { moveX += friction * (delta / 1000); }
+        else { moveX = 0 }
+    }
+    // if (Controller.isPressed("key_shift")) { sprint = 2 }
 
-let loadingAnimateProperty;
-let loadingSpinner = new Asset.Primitive({ type: "arc", fill: "#ffffff", angleFrom: 0, angleTo: 180 });
+    moveX = Math.max(-maxSpeed, Math.min(maxSpeed, moveX + (forceX * acceleration * (delta / 1000))));
+    if (Math.abs(moveX) < 0.001) { moveX = 0}
+    moveY = Math.max(-maxSpeed, Math.min(maxSpeed, moveY + (gravity * (delta / 1000))));
 
-let loadingScreen = function() {
-    Layer.purgeAll();
-    backgroundLayer.assign((new GameObject({ asset: new Asset.Primitive({ type: "rectangle", fill: "#222222" }), x: 0, y: 0, w: Game.width, h: Game.height })));
-    hud.assign(new GameObject({ asset: loadingSpinner, x: Game.width / 2, y: Game.height / 2, w: 200, h: 200 }));
+    currentMap.move(moveX * speed * sprint * (delta / 1000), moveY * speed * (delta / 1000));
 
-    loadingAnimateProperty = new Animate.property(1000, {0: 0, 1: 360}, Infinity);
-};
+    if (Math.abs(moveX) > 0.05) { 
+        cactusAnimation.use("run");
+    } else {
+        cactusAnimation.use("idle");
+    }
 
-let loadStartScreen = function() {
-    Layer.purgeAll();
-    let startBDG = new GameObject({ asset: (new Asset({ image: "png/start.png" })), x: 0, y: 0, w: Game.width, h: Game.height });
-    let startHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 100, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
-    let startCTA = new GameObject({ asset: (new Text({ text: "PRESS START TO BEGIN", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
+    let left = currentMap.x + collisionPoints.xn;
+    let right = currentMap.x + collisionPoints.xp;
+    let top = currentMap.y + collisionPoints.yn;
+    let bottom = currentMap.y + collisionPoints.yp;
 
-    backgroundLayer.assign(startBDG);
-    hud.assign(startHeader, startCTA);
-    state = "start";
-};
+    let tileLeft = Math.floor(left / currentMap.size);
+    let tileRight = Math.floor(right / currentMap.size);
+    let tileTop = Math.floor(top / currentMap.size);
+    let tileBottom = Math.floor(bottom / currentMap.size);
 
-let loadLevel = function() {
-    Layer.purgeAll();
-    backgroundLayer.assign(levelBackground);
-    mapLayer.assign(currentMap);
-    detailsLayer.assign(cactusBro);
-    state = "game";
-    cactusAnimation.switch("idle");
-};
+    let collision = { l: false, r: false, t: false, b: false }
+
+    if (currentMap.map[tileBottom][tileLeft].toLowerCase() !== currentMap.map[tileBottom][tileLeft]) {
+        if (moveY > 0 && currentMap.map[tileBottom - 1][tileLeft].toLowerCase() == currentMap.map[tileBottom - 1][tileLeft]) {
+            collision.b = true;
+        } else if (moveX < 0 && currentMap.map[tileBottom][tileLeft + 1].toLowerCase() == currentMap.map[tileBottom][tileLeft + 1]) {
+            collision.l = true;
+        }
+    }
+    if (currentMap.map[tileBottom][tileRight].toLowerCase() !== currentMap.map[tileBottom][tileRight]) {
+        if (moveY > 0 && currentMap.map[tileBottom - 1][tileRight].toLowerCase() == currentMap.map[tileBottom - 1][tileRight]) {
+            collision.b = true;
+        } else if (moveX > 0 && currentMap.map[tileBottom][tileRight - 1].toLowerCase() == currentMap.map[tileBottom][tileRight - 1]) {
+            collision.r = true;
+        }
+    }
+
+    if (currentMap.map[tileTop][tileLeft].toLowerCase() !== currentMap.map[tileTop][tileLeft]) {
+        if (moveY < 0 && currentMap.map[tileTop + 1][tileLeft].toLowerCase() == currentMap.map[tileTop + 1][tileLeft]) {
+            collision.t = true;
+        } else if (moveX < 0 && currentMap.map[tileTop][tileLeft + 1].toLowerCase() == currentMap.map[tileTop][tileLeft + 1]) {
+            collision.l = true;
+        }
+    }
+    if (currentMap.map[tileTop][tileRight].toLowerCase() !== currentMap.map[tileTop][tileRight]) {
+        if (moveY < 0 && currentMap.map[tileTop + 1][tileRight].toLowerCase() == currentMap.map[tileTop + 1][tileRight]) {
+            collision.t = true;
+        } else if (moveX > 0 && currentMap.map[tileTop][tileRight - 1].toLowerCase() == currentMap.map[tileTop][tileRight - 1]) {
+            collision.r = true;
+        }
+    }
+
+    if (collision.b) {
+        moveY = 0;
+        currentMap.position(null, (tileBottom * currentMap.size) - (currentMap.size / 2));
+    }
+
+    if (collision.t) {
+        moveY = 0;
+        currentMap.position(null, ((tileTop + 1) * currentMap.size) + (currentMap.size / 2));
+    }
+
+    if (collision.l) {
+        moveX = 0;
+        currentMap.position(((tileLeft + 1) * currentMap.size) + (currentMap.size / 2), null);
+    }
+
+    if (collision.r) {
+        moveX = 0;
+        currentMap.position((tileRight * currentMap.size) - (currentMap.size / 2), null);
+    }
+
+    touchingGround = collision.b;
+}
+
+// --- GAME LOOP LOGIC --- //
 
 Game.on("loop", ({ stamp, delta }) => {
     switch (state) {
@@ -202,93 +253,7 @@ Game.on("loop", ({ stamp, delta }) => {
             
         }
         case ("game"): {
-            if (delta > 50) { return; }
-            let forceX = 0;
-            let sprint = 1;
-            if (Controller.isPressed("key_a")) { forceX -= 1 }
-            if (Controller.isPressed("key_d")) { forceX += 1 }
-            if (forceX == 0 && Math.abs(moveX) > 0.001) { 
-                if (moveX > friction * (delta / 1000) ) { moveX -= friction * (delta / 1000); }
-                else if (moveX < friction * (delta / 1000) * -1 ) { moveX += friction * (delta / 1000); }
-                else { moveX = 0 }
-            }
-            // if (Controller.isPressed("key_shift")) { sprint = 2 }
-
-            moveX = Math.max(-maxSpeed, Math.min(maxSpeed, moveX + (forceX * acceleration * (delta / 1000))));
-            if (Math.abs(moveX) < 0.001) { moveX = 0}
-            moveY = Math.max(-maxSpeed, Math.min(maxSpeed, moveY + (gravity * (delta / 1000))));
-        
-            currentMap.move(moveX * speed * sprint * (delta / 1000), moveY * speed * (delta / 1000));
-
-            if (Math.abs(moveX) > 0.05) { 
-                cactusAnimation.use("run");
-            } else {
-                cactusAnimation.use("idle");
-            }
-
-            let left = currentMap.x + collisionPoints.xn;
-            let right = currentMap.x + collisionPoints.xp;
-            let top = currentMap.y + collisionPoints.yn;
-            let bottom = currentMap.y + collisionPoints.yp;
-
-            let tileLeft = Math.floor(left / currentMap.size);
-            let tileRight = Math.floor(right / currentMap.size);
-            let tileTop = Math.floor(top / currentMap.size);
-            let tileBottom = Math.floor(bottom / currentMap.size);
-
-            let collision = { l: false, r: false, t: false, b: false }
-
-            if (currentMap.map[tileBottom][tileLeft].toLowerCase() !== currentMap.map[tileBottom][tileLeft]) {
-                if (moveY > 0 && currentMap.map[tileBottom - 1][tileLeft].toLowerCase() == currentMap.map[tileBottom - 1][tileLeft]) {
-                    collision.b = true;
-                } else if (moveX < 0 && currentMap.map[tileBottom][tileLeft + 1].toLowerCase() == currentMap.map[tileBottom][tileLeft + 1]) {
-                    collision.l = true;
-                }
-            }
-            if (currentMap.map[tileBottom][tileRight].toLowerCase() !== currentMap.map[tileBottom][tileRight]) {
-                if (moveY > 0 && currentMap.map[tileBottom - 1][tileRight].toLowerCase() == currentMap.map[tileBottom - 1][tileRight]) {
-                    collision.b = true;
-                } else if (moveX > 0 && currentMap.map[tileBottom][tileRight - 1].toLowerCase() == currentMap.map[tileBottom][tileRight - 1]) {
-                    collision.r = true;
-                }
-            }
-
-            if (currentMap.map[tileTop][tileLeft].toLowerCase() !== currentMap.map[tileTop][tileLeft]) {
-                if (moveY < 0 && currentMap.map[tileTop + 1][tileLeft].toLowerCase() == currentMap.map[tileTop + 1][tileLeft]) {
-                    collision.t = true;
-                } else if (moveX < 0 && currentMap.map[tileTop][tileLeft + 1].toLowerCase() == currentMap.map[tileTop][tileLeft + 1]) {
-                    collision.l = true;
-                }
-            }
-            if (currentMap.map[tileTop][tileRight].toLowerCase() !== currentMap.map[tileTop][tileRight]) {
-                if (moveY < 0 && currentMap.map[tileTop + 1][tileRight].toLowerCase() == currentMap.map[tileTop + 1][tileRight]) {
-                    collision.t = true;
-                } else if (moveX > 0 && currentMap.map[tileTop][tileRight - 1].toLowerCase() == currentMap.map[tileTop][tileRight - 1]) {
-                    collision.r = true;
-                }
-            }
-
-            if (collision.b) {
-                moveY = 0;
-                currentMap.position(null, (tileBottom * currentMap.size) - (currentMap.size / 2));
-            }
-
-            if (collision.t) {
-                moveY = 0;
-                currentMap.position(null, ((tileTop + 1) * currentMap.size) + (currentMap.size / 2));
-            }
-
-            if (collision.l) {
-                moveX = 0;
-                currentMap.position(((tileLeft + 1) * currentMap.size) + (currentMap.size / 2), null);
-            }
-
-            if (collision.r) {
-                moveX = 0;
-                currentMap.position((tileRight * currentMap.size) - (currentMap.size / 2), null);
-            }
-
-            touchingGround = collision.b;
+            movementGameLoop(delta);
 
             break;
         }
