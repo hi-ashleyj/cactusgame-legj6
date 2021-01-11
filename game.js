@@ -244,7 +244,7 @@ Asset.Primitive.prototype.draw = function(layer, x, y, w, h) {
 };
 
 let Sound = function(layer, description, asset) {
-    // TODO: handle converting asset into something playable
+    // TODO: do sounds
 };
 
 let Layer = function(id, options) {
