@@ -116,7 +116,19 @@ let Asset = function(options) {
         if (Asset.locations[this.location]) {
             this.resource = Asset.locations[this.location];
         } else {
-            // TODO: Add getter code
+            let u = this;
+            this.resource = document.createElement("img");
+            Asset.locations[this.location] = this.resource;
+            Asset.loading.push(this.location);
+            this.resource.addEventListener("load", () => {
+                for (let i = Asset.loading.length - 1; i >= 0; i--) {
+                    if (Asset.loading[i] == u.location) {
+                        Asset.loading.splice(i, 1);
+                    }
+                }
+            });
+            this.resource.src = this.location;
+            Asset.dumpspace.append(this.resource);
         }
         if (options.crop) {
             this.crop = [options.crop.x, options.crop.y, options.crop.w, options.crop.h];
@@ -126,7 +138,7 @@ let Asset = function(options) {
     return this;
 };
 
-Asset.Primitive = function(id, options) {
+Asset.Primitive = function(options) {
     if (options.type) {
         if (options.type == "rectangle") {
             this.type = "rect";
@@ -147,8 +159,40 @@ Asset.Primitive = function(id, options) {
     return this;
 };
 
+Asset.Font = function(fontname, loc, features) {
+    this.font = fontname;
+    this.loc = loc;
+    this.features = (features) ? features : null;
+
+    if (Asset.locations[this.loc]) {
+        return this;
+    }
+
+    Asset.locations[this.loc] = true;
+
+    if (this.features) {
+        this.face = new FontFace(this.font, "url(" + this.loc + ")", this.features);
+    } else {
+        this.face = new FontFace(this.font, "url(" + this.loc + ")");
+    }
+
+    Asset.loading.push(this.loc);
+
+    this.face.load().then((face) => {
+        document.fonts.add(face);
+        for (let i = Asset.loading.length - 1; i >= 0; i--) {
+            if (Asset.loading[i] == this.loc) {
+                Asset.loading.splice(i, 1);
+            }
+        }
+    });
+
+    return this;
+};
+
 Asset.loading = [];
 Asset.locations = {};
+Asset.dumpspace = document.querySelector("div.image-dumpspace");
 
 Asset.center = function(x, y, w, h) {
     return [x - (w / 2), y - (h / 2), w, h];
@@ -235,13 +279,24 @@ Layer.drawAll = function() {
     }
 };
 
-Layer.prototype.add = function(...assets) {
+Layer.prototype.assign = function(...assets) {
     for (let thing of assets) {
-        thing.layer = this;
         this.targets.push(thing);
     }
 
     return this;
+};
+
+Layer.prototype.remove = function(...assets) {
+    for (let i = this.targets.length - 1; i >= 0; i--) {
+        if (assets.includes(this.targets[i])) {
+            this.targets.splice(i, 1);
+        }
+    }
+}
+
+Layer.prototype.purge = function() {
+    this.targets = [];
 };
 
 Layer.prototype.draw = function() {
@@ -342,9 +397,39 @@ GameObject.prototype.draw = function(layer) {
     this.asset.draw(layer, this.x, this.y, this.w, this.h);
 };
 
+GameObject.prototype.move = function(x, y, w, h) {
+    if (typeof x == "number") { this.x += x; };
+    if (typeof y == "number") { this.y += y; };
+    if (typeof w == "number") { this.w += w; };
+    if (typeof h == "number") { this.h += h; };
+};
 
+let Text = function(options) {
+    this.text = options.text;
+    this.size = options.size;
+    this.font = options.font;
+    this.style = (options.style) ? options.style : "";
+    this.fill = (options.fill) ? options.fill : null;
+    this.stroke = (options.stroke) ? options.stroke : null;
+    this.alignH = (["left", "center", "right"].includes(options.alignH)) ? options.alignH : "left";
+    this.alignV = (["top", "middle", "bottom", "alphabetic"].includes(options.alignV)) ? options.alignV : "alphabetic";
 
+    return this;
+};
 
+Text.prototype.draw = function(layer, x, y, _w, _h) {
+    layer.ctx.textAlign = this.alignH;
+    layer.ctx.textBaseline = this.alignV;
+    layer.ctx.font = ((this.style) ? this.style + " ": "") + this.size + "px " + this.font;
+    if (this.fill) {
+        layer.ctx.fillStyle = this.fill;
+        layer.ctx.fillText(this.text, x, y);
+    }
+    if (this.stroke) {
+        layer.ctx.strokeStyle = this.stroke;
+        layer.ctx.strokeText(this.text, x, y);
+    }
+};
 
 Game.timeouts = [];
 Game.last = -1;
