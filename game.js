@@ -339,7 +339,7 @@ Animate.property.prototype.value = function() {
     let to;
     let from;
     for (let i = 0; i < this.points.length; i++) {
-        if (this.points[i] >= factor) {
+        if (this.points[i] >= factor && !(factor == this.points[i] && factor == 0)) {
             to = this.points[i];
             from = this.points[i - 1];
             break;

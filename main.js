@@ -71,7 +71,18 @@ let mapLayer = new Layer("map", { level: 1 });
 let detailsLayer = new Layer("details", { level: 2 });
 let hud = new Layer("hud", { level: 3 });
 
-let cactusBro = new GameObject({ asset: (new Asset({ image: "png/cactus.png" })) });
+let cactusAnimation = new Animate.Sequence({ 
+    idle: {
+        duration: 1000,
+        sequence: (new TileMap({ image: "png/character/cactus-idle-tile.png", scaleX: 128, scaleY: 128, size: 2})).map
+    },
+    run: {
+        duration: 1000,
+        sequence: (new TileMap({ image: "png/character/cactus-run-tile.png", scaleX: 128, scaleY: 128, size: 5})).map
+    }
+}, "idle");
+let cactusBro = new GameObject({ asset: cactusAnimation });
+
 cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, gameScale, gameScale));
 
 let levelBackground = new GameObject({ asset: (new Asset({ image: "png/bg.png"})), x: 0, y: 0, w: Game.width, h: Game.height});
@@ -149,6 +160,7 @@ Game.on("loop", ({ stamp, delta }) => {
                 mapLayer.assign(currentMap);
                 detailsLayer.assign(cactusBro);
                 state = "game";
+                cactusAnimation.switch("idle");
             }
             break;
         }
@@ -170,6 +182,12 @@ Game.on("loop", ({ stamp, delta }) => {
             moveY = Math.max(-maxSpeed, Math.min(maxSpeed, moveY + (gravity * (delta / 1000))));
         
             currentMap.move(moveX * speed * sprint * (delta / 1000), moveY * speed * (delta / 1000));
+
+            if (Math.abs(moveX) > 0.05) { 
+                cactusAnimation.use("run");
+            } else {
+                cactusAnimation.use("idle");
+            }
 
             let left = currentMap.x + collisionPoints.xn;
             let right = currentMap.x + collisionPoints.xp;
