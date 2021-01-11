@@ -379,9 +379,8 @@ Animate.Sequence.prototype.switch = function(thing) {
 };
 
 Animate.Sequence.prototype.use = function(thing) {
-    if (this.using !== thing && this.animations[thing]) {
-        this.using = thing;
-        this.timing = new Animate.property(this.animations[this.using].duration, {0: 0, 1: this.animations[this.using].sequence.length}, Infinity);
+    if (this.using !== thing) {
+        this.switch(thing);
     }
 };
 
