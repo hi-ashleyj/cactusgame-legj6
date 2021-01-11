@@ -30,7 +30,7 @@ let loadStartScreen = function() {
     Layer.purgeAll();
     let startBDG = new GameObject({ asset: (new Asset({ image: "png/start.png" })), x: 0, y: 0, w: Game.width, h: Game.height });
     let startHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 100, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
-    let startCTA = new GameObject({ asset: (new Text({ text: "PRESS START TO BEGIN", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
+    let startCTA = new GameObject({ asset: (new Text({ text: "PRESS SPACE TO BEGIN", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
 
     backgroundLayer.assign(startBDG);
     hudLayer.assign(startHeader, startCTA);
@@ -40,6 +40,9 @@ let loadStartScreen = function() {
 // ---- GAME SCREEN ---- //
 
 let currentMap;
+let currentMapNumber;
+let winAnimation;
+let winProperty;
 let gravity = 2; // Setup game globals
 let acceleration = 4;
 let friction = 4;
@@ -72,14 +75,19 @@ cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, gameScale, g
 let levels = [ // Level Design
     {
         assets: {
-            "O": (new Asset({ image: "png/world/fill.png" })),
-            "T": (new Asset({ image: "png/world/top.png" })),
-            "A": (new Asset({ image: "png/world/left.png" })),
-            "B": (new Asset({ image: "png/world/right.png" })),
-            "I": (new Asset({ image: "png/world/insidel.png" })),
-            "J": (new Asset({ image: "png/world/insider.png" })),
-            "K": (new Asset({ image: "png/world/insetl.png" })),
-            "L": (new Asset({ image: "png/world/insetr.png" })),
+            "O": (new Asset({ image: "png/desert/fill.png" })),
+            "T": (new Asset({ image: "png/desert/top.png" })),
+            "A": (new Asset({ image: "png/desert/left.png" })),
+            "B": (new Asset({ image: "png/desert/right.png" })),
+            "I": (new Asset({ image: "png/desert/insidel.png" })),
+            "J": (new Asset({ image: "png/desert/insider.png" })),
+            "K": (new Asset({ image: "png/desert/insetl.png" })),
+            "L": (new Asset({ image: "png/desert/insetr.png" })),
+            "R": (new Asset({ image: "png/desert/bottom.png" })),
+            "M": (new Asset({ image: "png/desert/cornertl.png" })),
+            "N": (new Asset({ image: "png/desert/cornertr.png" })),
+            "P": (new Asset({ image: "png/desert/cornerbl.png" })),
+            "Q": (new Asset({ image: "png/desert/cornerbr.png" })),
         
             "y": (new Asset({ image: "png/decoration/grassy.png" })),
             "b": (new Asset({ image: "png/decoration/grassb.png" })),
@@ -97,23 +105,42 @@ let levels = [ // Level Design
             "r": mapBigtree.map[5],
         },
         map: [
-            "OOOOB-------------------------AOOOOO",
-            "OOOOB-------------------------AOOOOO",
-            "OOOOB-------------------------AOOOOO",
-            "OOOOB-----------mno-----------AOOOOO",
-            "OOOOB-y---b-d-z-pqr-fg--wx----AOOOOO",
-            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTJLOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB-------------------------PRRRRRRRRRRRRRRRRRRRRQ--AOOOO",
+            "OOOOB-------------------------------------------------AOOOO",
+            "OOOOB-------------------------------------------------AOOOO",
+            "OOOOB-----------mno-----------------------------------AOOOO",
+            "OOOOB-y---b-d-z-pqr-fg--wx----MTTTTTTTTTTN---MTTTTTTTJLOOOO",
+            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTJLOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
         ],
         start: {
             x: gameScale * 6, 
-            y: gameScale * 4, 
+            y: gameScale * 10, 
             size: gameScale
+        },
+        win: {
+            requirements: {
+                x: gameScale * 50
+            },
+            animation: (value, delta) => {
+                if (value < 1500) {
+                    currentMap.x += ((1500 - value) / 1500) * speed * maxSpeed * (delta / 1000);
+                } else if (value > 3000) {
+                    currentMap.y -= ((value - 3000) / 2000) * speed * maxSpeed * 1.5 * (delta / 1000);
+                }
+            },
+            duration: 5000
         }
     }
 ]
@@ -126,6 +153,7 @@ for (let i = 0; i < levels.length; i++) {
 
 let loadLevel = function(number) {
     Layer.purgeAll();
+    currentMapNumber = number;
     currentMap = levelMaps[number];
     currentMap.position(levels[number].start.x, levels[number].start.y);
     moveX = 0;
@@ -134,6 +162,7 @@ let loadLevel = function(number) {
     mapLayer.assign(currentMap);
     detailsLayer.assign(cactusBro);
     state = "game";
+    doPhysics = true;
     cactusAnimation.switch("idle");
 };
 
@@ -144,6 +173,12 @@ collisionPoints = {
     yn: -(gameScale / 2),
     yp: (gameScale / 2),
 }
+
+let dielol = function() {
+    state = "";
+    Layer.purgeAll();
+    Game.wait(() => { loadLevel(currentMapNumber); }, 500)
+};
 
 let movementGameLoop = function(delta) {
     if (delta > 50) { return; }
@@ -235,6 +270,43 @@ let movementGameLoop = function(delta) {
     touchingGround = collision.b;
 }
 
+let checkDeath = function() {
+    if (currentMap.y + (Game.height / 2) > currentMap.sizeY * gameScale) {
+        dielol();
+    }
+};
+
+let checkWin = function() {
+    let yes = true;
+    if (levels[currentMapNumber].win.requirements.x && currentMap.x < levels[currentMapNumber].win.requirements.x) {
+        yes = false;
+    }
+
+    if (levels[currentMapNumber].win.requirements.y && currentMap.y < levels[currentMapNumber].win.requirements.y) {
+        yes = false;
+    }
+
+    if (yes) {
+        doPhysics = false;
+        winAnimation = levels[currentMapNumber].win.animation;
+
+        winProperty = new Animate.property(levels[currentMapNumber].win.duration, {0: 0, 1: levels[currentMapNumber].win.duration}, 1);
+
+        Game.wait(() => {
+            Layer.purgeAll();
+            winAnimation = null;
+            state = "";
+            Game.wait(() => {
+                if (currentMapNumber + 1 < levels.length) {
+                    loadLevel(currentMapNumber + 1);
+                } else {
+                    console.log("Game Won");
+                }
+            }, 500);
+        }, levels[currentMapNumber].win.duration);
+    }
+};
+
 // --- GAME LOOP LOGIC --- //
 
 Game.on("loop", ({ stamp, delta }) => {
@@ -254,8 +326,14 @@ Game.on("loop", ({ stamp, delta }) => {
             break;
         }
         case ("game"): {
+            if (winAnimation) {
+                winAnimation(winProperty.value(), delta);
+            }
+            
             if (doPhysics) {
                 movementGameLoop(delta);
+                checkDeath();
+                checkWin();
             }
 
             break;
