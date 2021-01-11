@@ -247,20 +247,15 @@ Layer.prototype.add = function(...assets) {
 Layer.prototype.draw = function() {
     this.ctx.clearRect(0, 0, Game.width, Game.height);
     for (let i = 0; i < this.targets.length; i++) {
-        this.targets[i].draw();
+        this.targets[i].draw(this);
     }
 };
 
 let Animate = {};
-Animate.last = -1;
 Animate.stamp = -1;
 Animate.targets = [];
 
 Animate.tick = function(stamp) {
-    if (Animate.stamp < 0) {
-        Animate.stamp = stamp;
-    }
-    Animate.last = Animate.stamp;
     Animate.stamp = stamp;
 };
 
@@ -313,21 +308,46 @@ let TileMap = function(options) {
     return this;
 };
 
+Animate.Sequence = function(animations, def) {
+    this.animations = animations;
+    this.default = def;
+    this.using = def;
+    this.timing = new Animate.property(this.animations[this.using].duration, {0: 0, 1: this.animations[this.using].sequence.length}, Infinity);
+    return this;
+};
+
+Animate.Sequence.prototype.switch = function(thing) {
+    if (this.animations[thing]) {
+        this.using = thing;
+        this.timing = new Animate.property(this.animations[this.using].duration, {0: 0, 1: this.animations[this.using].sequence.length}, Infinity);
+    }
+};
+
+Animate.Sequence.prototype.draw = function(layer, x, y, w, h) {
+    let thing = Math.floor(this.timing.value());
+    this.animations[this.using].sequence[thing].draw(layer, x, y, w, h);
+};
+
 let GameObject = function(options) {
-    
+    this.asset = options.asset;
+    this.x = (options.x) ? options.x : 0;
+    this.y = (options.y) ? options.y : 0;
+    this.w = (options.w) ? options.w : 100;
+    this.h = (options.h) ? options.h : 100;
+
+    return this;
 };
 
-let Character = function(options) {
-
+GameObject.prototype.draw = function(layer) {
+    this.asset.draw(layer, this.x, this.y, this.w, this.h);
 };
 
-let Player = {};
 
-let Scene = {};
 
 
 
 Game.timeouts = [];
+Game.last = -1;
 
 Game.wait = function(callback, delay) {
     Game.timeouts.push({ callback, delay });
@@ -347,7 +367,12 @@ Game.fire = function(type, data) {
     }
 };
 
+
 Game.loop = function(time) {
+    if (Game.last < 0) {
+        Game.last = time;
+    }
+    let delta = (time - Game.last);
     Animate.tick(time);
 
     for (let i = Game.timeouts.length - 1; i >= 0; i--) {
@@ -361,13 +386,14 @@ Game.loop = function(time) {
         }
     }
 
-    Game.fire("loop");
+    Game.fire("loop", { stamp: time, delta: delta });
 
     Layer.drawAll();
 
-    Game.fire("postdraw");
+    Game.fire("postdraw", { stamp: time, delta: delta });
 
     window.requestAnimationFrame(Game.loop);
+    Game.last = time;
 };
 
 Game.create = function(options) {
