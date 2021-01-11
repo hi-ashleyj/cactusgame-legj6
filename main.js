@@ -251,7 +251,7 @@ Game.on("loop", ({ stamp, delta }) => {
             break;
         }
         case ("start"): {
-            
+            break;
         }
         case ("game"): {
             if (doPhysics) {
@@ -268,7 +268,7 @@ Controller.on("press", "key_ ", () => {
         moveY = -maxSpeed;
     } else if (state == "start") {
         Layer.purgeAll()
-        Game.wait(loadLevel, 500);
+        Game.wait(() => { loadLevel(0); }, 500);
         state = "";
     }
 })
