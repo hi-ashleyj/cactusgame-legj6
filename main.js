@@ -154,9 +154,6 @@ collisionPoints = {
 
 let loading = true;
 
-let startBDG = new GameObject({ asset: (new Asset({ image: "png/start.png" })), x: 0, y: 0, w: Game.width, h: Game.height });
-let startHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 100, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
-
 let loadingAnimateProperty;
 let loadingSpinner = new Asset.Primitive({ type: "arc", fill: "#ffffff", angleFrom: 0, angleTo: 180 });
 
@@ -170,13 +167,18 @@ let loadingScreen = function() {
 
 let loadStartScreen = function() {
     Layer.purgeAll();
+    let startBDG = new GameObject({ asset: (new Asset({ image: "png/start.png" })), x: 0, y: 0, w: Game.width, h: Game.height });
+    let startHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 100, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
+    let startCTA = new GameObject({ asset: (new Text({ text: "PRESS START TO BEGIN", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
+
     backgroundLayer.assign(startBDG);
-    hud.assign(startHeader);
+    hud.assign(startHeader, startCTA);
     state = "start";
 };
 
 let loadLevel = function() {
     Layer.purgeAll();
+    backgroundLayer.assign(levelBackground);
     mapLayer.assign(currentMap);
     detailsLayer.assign(cactusBro);
     state = "game";
@@ -294,8 +296,12 @@ Game.on("loop", ({ stamp, delta }) => {
 });
 
 Controller.on("press", "key_ ", () => {
-    if (touchingGround) {
+    if (state == "game" && touchingGround) {
         moveY = -maxSpeed;
+    } else if (state == "start") {
+        Layer.purgeAll()
+        Game.wait(loadLevel, 500);
+        state = "";
     }
 })
 
