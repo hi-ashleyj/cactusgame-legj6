@@ -225,7 +225,7 @@ Asset.Primitive.prototype.draw = function(layer, x, y, w, h) {
             break;
         }
         case ("arc"): {
-            let r = (this.w + this.h) / 4;
+            let r = (w + h) / 4;
             layer.ctx.beginPath();
             layer.ctx.arc(x, y, r, ((this.angleFrom - 90) * Math.PI / 180), ((this.angleTo - 90) * Math.PI / 180));
             layer.ctx.lineTo(x, y);
@@ -276,6 +276,12 @@ Layer.drawAll = function() {
 
     for (let i = 0; i < layers.length; i++) {
         Layer.list[layers[i]].draw();
+    }
+};
+
+Layer.purgeAll = function() {
+    for (let i in Layer.list) {
+        Layer.list[i].purge();
     }
 };
 

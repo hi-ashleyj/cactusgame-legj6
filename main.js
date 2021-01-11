@@ -66,6 +66,8 @@ LevelMap.prototype.position = function(x, y, size) {
 let gameScale = 192;
 let state = "loading";
 
+new Asset.Font("Press Start", "ttf/pressstart.ttf");
+
 let backgroundLayer = new Layer("background", { level: 0 });
 let mapLayer = new Layer("map", { level: 1 });
 let detailsLayer = new Layer("details", { level: 2 });
@@ -74,11 +76,11 @@ let hud = new Layer("hud", { level: 3 });
 let cactusAnimation = new Animate.Sequence({ 
     idle: {
         duration: 1000,
-        sequence: (new TileMap({ image: "png/character/cactus-idle-tile.png", scaleX: 128, scaleY: 128, size: 2})).map
+        sequence: (new TileMap({ image: "png/character/cactus-idle-tile.png", scaleX: 32, scaleY: 32, size: 2})).map
     },
     run: {
         duration: 1000,
-        sequence: (new TileMap({ image: "png/character/cactus-run-tile.png", scaleX: 128, scaleY: 128, size: 5})).map
+        sequence: (new TileMap({ image: "png/character/cactus-run-tile.png", scaleX: 32, scaleY: 32, size: 5})).map
     }
 }, "idle");
 let cactusBro = new GameObject({ asset: cactusAnimation });
@@ -86,12 +88,10 @@ let cactusBro = new GameObject({ asset: cactusAnimation });
 cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, gameScale, gameScale));
 
 let levelBackground = new GameObject({ asset: (new Asset({ image: "png/bg.png"})), x: 0, y: 0, w: Game.width, h: Game.height});
-backgroundLayer.assign(levelBackground);
 
-let aliveBush = new TileMap({ image: "png/decoration/alivebush.png", scaleX: 128, scaleY: 128, size: 2});
-let deadBush = new TileMap({ image: "png/decoration/deadbush.png", scaleX: 128, scaleY: 128, size: 2});
-let bones = new TileMap({ image: "png/decoration/bones.png", scaleX: 128, scaleY: 128, size: 2});
-let bigtree = new TileMap({ image: "png/decoration/bigtree.png", scaleX: 128, scaleY: 128, size: 6});
+let aliveBush = new TileMap({ image: "png/decoration/alivebush.png", scaleX: 32, scaleY: 32, size: 2});
+let bones = new TileMap({ image: "png/decoration/bones.png", scaleX: 32, scaleY: 32, size: 2});
+let bigtree = new TileMap({ image: "png/decoration/bigtree.png", scaleX: 32, scaleY: 32, size: 6});
 
 let levelAssets = {
     "O": (new Asset({ image: "png/world/fill.png" })),
@@ -108,8 +108,7 @@ let levelAssets = {
     "z": (new Asset({ image: "png/decoration/rock.png" })),
     "f": aliveBush.map[0],
     "g": aliveBush.map[1],
-    "i": deadBush.map[0],
-    "j": deadBush.map[1],
+    "d": (new Asset({ image: "png/decoration/deadbush.png" })),
     "w": bones.map[0],
     "x": bones.map[1],
     "m": bigtree.map[0],
@@ -125,9 +124,9 @@ let currentMap = new LevelMap(levelAssets, [
     "OOOOB-------------------------AOOOOO",
     "OOOOB-------------------------AOOOOO",
     "OOOOB-----------mno-----------AOOOOO",
-    "OOOOB-y---bij-z-pqr-fg--wx----AOOOOO",
-    "OOOOKITTTTTTTTTT----TTTTTTTTTJLOOOOO",
-    "OOOOOOOOOOOOOOOOTTTTOOOOOOOOOOOOOOOO",
+    "OOOOB-y---b-d-z-pqr-fg--wx----AOOOOO",
+    "OOOOKITTTTTTTTTTTTTTTTTTTTTTTJLOOOOO",
+    "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
     "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
@@ -153,16 +152,52 @@ collisionPoints = {
     yp: (gameScale / 2),
 }
 
+let loading = true;
+
+let startBDG = new GameObject({ asset: (new Asset({ image: "png/start.png" })), x: 0, y: 0, w: Game.width, h: Game.height });
+let startHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 100, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
+
+let loadingAnimateProperty;
+let loadingSpinner = new Asset.Primitive({ type: "arc", fill: "#ffffff", angleFrom: 0, angleTo: 180 });
+
+let loadingScreen = function() {
+    Layer.purgeAll();
+    backgroundLayer.assign((new GameObject({ asset: new Asset.Primitive({ type: "rectangle", fill: "#222222" }), x: 0, y: 0, w: Game.width, h: Game.height })));
+    hud.assign(new GameObject({ asset: loadingSpinner, x: Game.width / 2, y: Game.height / 2, w: 200, h: 200 }));
+
+    loadingAnimateProperty = new Animate.property(1000, {0: 0, 1: 360}, Infinity);
+};
+
+let loadStartScreen = function() {
+    Layer.purgeAll();
+    backgroundLayer.assign(startBDG);
+    hud.assign(startHeader);
+    state = "start";
+};
+
+let loadLevel = function() {
+    Layer.purgeAll();
+    mapLayer.assign(currentMap);
+    detailsLayer.assign(cactusBro);
+    state = "game";
+    cactusAnimation.switch("idle");
+};
+
 Game.on("loop", ({ stamp, delta }) => {
     switch (state) {
         case ("loading"): {
-            if (Asset.loading.length == 0) {
-                mapLayer.assign(currentMap);
-                detailsLayer.assign(cactusBro);
-                state = "game";
-                cactusAnimation.switch("idle");
+            let value = loadingAnimateProperty.value();
+            loadingSpinner.angleFrom = value;
+            loadingSpinner.angleTo = value + 180;
+
+            if (Asset.loading.length == 0 && loading) {
+                loading = false;
+                Game.wait(loadStartScreen, 1000);
             }
             break;
+        }
+        case ("start"): {
+            
         }
         case ("game"): {
             if (delta > 50) { return; }
@@ -263,5 +298,7 @@ Controller.on("press", "key_ ", () => {
         moveY = -maxSpeed;
     }
 })
+
+loadingScreen();
 
 Game.start();
