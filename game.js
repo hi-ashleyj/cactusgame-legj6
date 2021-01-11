@@ -378,6 +378,13 @@ Animate.Sequence.prototype.switch = function(thing) {
     }
 };
 
+Animate.Sequence.prototype.use = function(thing) {
+    if (this.using !== thing && this.animations[thing]) {
+        this.using = thing;
+        this.timing = new Animate.property(this.animations[this.using].duration, {0: 0, 1: this.animations[this.using].sequence.length}, Infinity);
+    }
+};
+
 Animate.Sequence.prototype.draw = function(layer, x, y, w, h) {
     let thing = Math.floor(this.timing.value());
     this.animations[this.using].sequence[thing].draw(layer, x, y, w, h);
