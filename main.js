@@ -47,6 +47,7 @@ let maxSpeed = 1.8;
 let speed = gameScale * 2;
 let moveX = 0;
 let moveY = 0;
+let doPhysics = true;
 let touchingGround = false;
 
 let levelBackground = new GameObject({ asset: (new Asset({ image: "png/bg.png"})), x: 0, y: 0, w: Game.width, h: Game.height}); // Setup resources
@@ -253,7 +254,9 @@ Game.on("loop", ({ stamp, delta }) => {
             
         }
         case ("game"): {
-            movementGameLoop(delta);
+            if (doPhysics) {
+                movementGameLoop(delta);
+            }
 
             break;
         }
