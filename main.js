@@ -70,8 +70,12 @@ let cactusAnimation = new Animate.Sequence({
     }
 }, "idle");
 let cactusBro = new GameObject({ asset: cactusAnimation });
-
+let testOnce = true;
 cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, gameScale, gameScale));
+let holyDroplet = new GameObject({ asset: new Asset({ image: "png/holydroplet.png" }) });
+
+let dropletXPos = 0;
+let dropletYPos = 0;
 
 let levels = [ // Level Design
     {
@@ -217,28 +221,31 @@ let levels = [ // Level Design
             "B": (new Asset({ image: "png/cloud/right.png" })),
             "T": (new Asset({ image: "png/cloud/top.png" })),
             "R": (new Asset({ image: "png/cloud/bottom.png" })),
-            "M": (new Asset({ image: "png/cloud/cornertl.png" })),
-            "N": (new Asset({ image: "png/cloud/cornertr.png" })),
-            "P": (new Asset({ image: "png/cloud/cornerbl.png" })),
-            "Q": (new Asset({ image: "png/cloud/cornerbr.png" })),
+            "M": (new Asset({ image: "png/cloud/corner-tl.png" })),
+            "N": (new Asset({ image: "png/cloud/corner-tr.png" })),
+            "P": (new Asset({ image: "png/cloud/corner-bl.png" })),
+            "Q": (new Asset({ image: "png/cloud/corner-br.png" })),
+            "X": (new Asset({ image: "png/cloud/floatl.png" })),
+            "Y": (new Asset({ image: "png/cloud/floatc.png" })),
+            "Z": (new Asset({ image: "png/cloud/floatr.png" })),
         },
         map: [
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "---------------MTTTTTN-------------------------------------------------------------------------------------------------------------",
-            "---------------AOOOOOB-------------------------------------------------------------------------------------------------------------",
-            "---------------PRRRRRQ-------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
-            "-----------------------------------------------------------------------------------------------------------------------------------",
+            "----------------------------------------------------------------------------------------------------------------------------------",
+            "------------------------------------------------------XYYYYYYYZ-------------------------------------------------------------------",
+            "----------------------------------------------------------------------------------------------------------------------------------",
+            "---------------------------------------XYYYYZ-------------------------------------------------------------------------------------",
+            "---------------------XYYYYYYYZ----------------------------------------------------------------------------------------------------",
+            "-----------------------------------------------------------MTTTTTN--XYYYYYZ----XYYZ-----XYYYYZ---XYYYYYYYYYYYYYYYZ----------------",
+            "----------XYYYYYZ-------------------------------MTTTTTN----PRRRRRQ----------------------------------------------------------------",
+            "-------------------------------------MTTTTTN----PRRRRRQ---------------------------------------------------------------------------",
+            "--------------------------MTTTTTN----PRRRRRQ--------------------------------------------------------------------------------------",
+            "---------------MTTTTTN----AOOOOOB-------------------------------------------------------------------------------------------------",
+            "---------------AOOOOOB----PRRRRRQ-------------------------------------------------------------------------------------------------",
+            "---------------PRRRRRQ------------------------------------------------------------------------------------------------------------",
+            "----------------------------------------------------------------------------------------------------------------------------------",
+            "----------------------------------------------------------------------------------------------------------------------------------",
+            "----------------------------------------------------------------------------------------------------------------------------------",
+            "----------------------------------------------------------------------------------------------------------------------------------",
         ],
         start: {
             x: gameScale * 19, 
@@ -247,16 +254,43 @@ let levels = [ // Level Design
         },
         win: {
             requirements: {
-                x: gameScale * 80
+                x: gameScale * 110
             },
             animation: (value, delta) => {
                 if (value < 1500) {
                     currentMap.x += ((1500 - value) / 1500) * speed * maxSpeed * (delta / 1000);
-                } else if (value > 3000) {
+
+                    let dropletX = 21660;
+                    let dropletY = 840;
+                    if (Math.abs(dropletX - currentMap.x) <= (Game.width / 2) + (gameScale / 2) && Math.abs(dropletY - currentMap.y) <= (Game.height / 2) + (gameScale / 2)) {
+                        dropletXPos = Game.width / 2 + (dropletX - currentMap.x);
+                        dropletYPos = Game.height / 2 + (dropletY - currentMap.y);
+                        let coords = Asset.center(dropletXPos, dropletYPos, gameScale, gameScale);
+                        holyDroplet.position(...coords);
+                    }
+                } else if (value > 3000 && value < 5000) {
                     currentMap.y -= ((value - 3000) / 2000) * speed * maxSpeed * 1.5 * (delta / 1000);
+                } else if (value > 6000 && value < 8000) {
+                    let amount = Math.pow(((value - 6000) * 9 / 2000) + 1, 4) / 10000;
+                    let scale = gameScale + (amount * gameScale * 4);
+                    cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, scale, scale));
+                    holyDroplet.position(...Asset.center(dropletXPos, dropletYPos, gameScale * (1 - (amount * 0.97)), gameScale * (1 - (amount * 0.97))))
                 }
             },
             duration: 10000
+        },
+        load: function() {
+            mapLayer.assign(holyDroplet);
+            holyDroplet.position(-100, -100, 20, 20);
+        },
+        tick: function(_stamp, _delta, phys) {
+            if (!phys) { return; }
+            let dropletX = 21660;
+            let dropletY = 840;
+            if (Math.abs(dropletX - currentMap.x) <= (Game.width / 2) + (gameScale / 2) && Math.abs(dropletY - currentMap.y) <= (Game.height / 2) + (gameScale / 2)) {
+                let coords = Asset.center(Game.width / 2 + (dropletX - currentMap.x), Game.height / 2 + (dropletY - currentMap.y), gameScale, gameScale);
+                holyDroplet.position(...coords);
+            }
         }
     }
 ]
@@ -277,12 +311,16 @@ let loadLevel = function(number) {
     levelText.asset.text = "LEVEL " + (number + 1);
     backgroundLayer.assign(levelBackground);
     mapLayer.assign(currentMap);
+    cactusBro.position(...Asset.center(Game.width / 2, Game.height / 2, gameScale, gameScale));
     detailsLayer.assign(cactusBro);
     hudLayer.assign(levelText);
     Game.wait(() => { hudLayer.remove(levelText) }, 1000);
     state = "game";
     doPhysics = true;
     cactusAnimation.switch("idle");
+    if (levels[number].load) {
+        levels[number].load();
+    }
 };
 
 // Movement/Physics/Collision Setup
@@ -447,6 +485,10 @@ Game.on("loop", ({ stamp, delta }) => {
         case ("game"): {
             if (winAnimation) {
                 winAnimation(winProperty.value(), delta);
+            }
+
+            if (currentMapNumber && levels[currentMapNumber] && levels[currentMapNumber].tick) {
+                levels[currentMapNumber].tick(stamp, delta, doPhysics);
             }
             
             if (doPhysics) {
