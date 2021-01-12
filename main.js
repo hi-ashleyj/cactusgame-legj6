@@ -37,6 +37,18 @@ let loadStartScreen = function() {
     state = "start";
 };
 
+// ---- WIN SCREEN ---- //
+
+let showWinScreen = function() {
+    Layer.purgeAll();
+    let goHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 5 });
+    let goStatus = new GameObject({ asset: (new Text({ text: ["WIN", "FINISH", "DONE", "COMPLETE", "CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS"][Math.floor(Math.random * 5)], font: "Press Start", size: 120, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
+    let goCTA = new GameObject({ asset: (new Text({ text: "PRESS SPACE TO MENU", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
+
+    hudLayer.assign(goHeader, goStatus, goCTA);
+    state = "win";
+};
+
 // ---- GAME SCREEN ---- //
 
 let currentMap;
@@ -457,7 +469,7 @@ let checkWin = function() {
                 if (currentMapNumber + 1 < levels.length) {
                     loadLevel(currentMapNumber + 1);
                 } else {
-                    console.log("Game Won");
+                    showWinScreen();
                 }
             }, 500);
         }, levels[currentMapNumber].win.duration);
@@ -507,7 +519,11 @@ Controller.on("press", "key_ ", () => {
         moveY = maxSpeed * -1.5;
     } else if (state == "start") {
         Layer.purgeAll()
-        Game.wait(() => { loadLevel(2); }, 500);
+        Game.wait(() => { loadLevel(0); }, 500);
+        state = "";
+    } else if (state == "win") {
+        Layer.purgeAll()
+        Game.wait(() => { loadStartScreen(); }, 500);
         state = "";
     }
 })
