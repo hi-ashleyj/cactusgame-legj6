@@ -43,7 +43,7 @@ let currentMap;
 let currentMapNumber;
 let winAnimation;
 let winProperty;
-let gravity = 2; // Setup game globals
+let gravity = 3; // Setup game globals
 let acceleration = 4;
 let friction = 4;
 let maxSpeed = 1.8;
@@ -57,6 +57,7 @@ let levelBackground = new GameObject({ asset: (new Asset({ image: "png/bg.png"})
 let mapAliveBush = new TileMap({ image: "png/decoration/alivebush.png", scaleX: 32, scaleY: 32, size: 2});
 let mapBones = new TileMap({ image: "png/decoration/bones.png", scaleX: 32, scaleY: 32, size: 2});
 let mapBigtree = new TileMap({ image: "png/decoration/bigtree.png", scaleX: 32, scaleY: 32, size: 6});
+let levelText = new GameObject({ asset: (new Text({ text: "LEVEL ", size: 40, font: "Press Start", fill: "#ffffff", alignH: "center", alignV: "middle" })), x: Game.width / 2, y: Game.height / 4, w: 0, h: 0 });
 
 let cactusAnimation = new Animate.Sequence({ 
     idle: {
@@ -88,6 +89,9 @@ let levels = [ // Level Design
             "N": (new Asset({ image: "png/desert/cornertr.png" })),
             "P": (new Asset({ image: "png/desert/cornerbl.png" })),
             "Q": (new Asset({ image: "png/desert/cornerbr.png" })),
+            "D": (new Asset({ image: "png/desert/floatl.png" })),
+            "E": (new Asset({ image: "png/desert/floatc.png" })),
+            "F": (new Asset({ image: "png/desert/floatr.png" })),
         
             "y": (new Asset({ image: "png/decoration/grassy.png" })),
             "b": (new Asset({ image: "png/decoration/grassb.png" })),
@@ -105,33 +109,96 @@ let levels = [ // Level Design
             "r": mapBigtree.map[5],
         },
         map: [
-            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
-            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
-            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
-            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
-            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
-            "OOOOB-------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
-            "OOOOB-------------------------PRRRRRRRRRRRRRRRRRRRRQ--AOOOO",
-            "OOOOB-------------------------------------------------AOOOO",
-            "OOOOB-------------------------------------------------AOOOO",
-            "OOOOB-----------mno-----------------------------------AOOOO",
-            "OOOOB-y---b-d-z-pqr-fg--wx----MTTTTTTTTTTN---MTTTTTTTJLOOOO",
-            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTJLOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO","OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO","OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO","OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO","OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB---------------------------------------------------------AOOOOOOOOOOOOOOOOOOOOB--AOOOO",
+            "OOOOB---------------------------------------------------------PRRRRRRRRRRRRRRRRRRRRQ--AOOOO",
+            "OOOOB---------------------------------------------------------------------------------AOOOO",
+            "OOOOB---------------------------------------------------------------------------------AOOOO",
+            "OOOOB----------------------mno------------fg-----------------------wx-----------------AOOOO",
+            "OOOOB----------------------pqr-------MTTTTTTTTN----d------y---MTTTTTTTTTTN---MTTTTTTTJLOOOO",
+            "OOOOB---------------------DEEEEEF----AOOOOOOOOB---DEEEF--DEEF-AOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOB-b---y------y----b------------MJLOOOOOOOOKNz-------------AOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTTTTTJJLOOOOOOOOOOOKITN-------MTTJLOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
         ],
         start: {
             x: gameScale * 6, 
-            y: gameScale * 10, 
+            y: gameScale * 14, 
             size: gameScale
         },
         win: {
             requirements: {
-                x: gameScale * 50
+                x: gameScale * 82
+            },
+            animation: (value, delta) => {
+                if (value < 1500) {
+                    currentMap.x += ((1500 - value) / 1500) * speed * maxSpeed * (delta / 1000);
+                } else if (value > 3000) {
+                    currentMap.y -= ((value - 3000) / 2000) * speed * maxSpeed * 1.5 * (delta / 1000);
+                }
+            },
+            duration: 5000
+        }
+    },
+    {
+        assets: {
+            "H": (new Asset({ image: "png/pipe/pipeh.png" })),
+            "V": (new Asset({ image: "png/pipe/pipev.png" })),
+            "M": (new Asset({ image: "png/pipe/cornertl.png" })),
+            "N": (new Asset({ image: "png/pipe/cornertr.png" })),
+            "P": (new Asset({ image: "png/pipe/cornerbl.png" })),
+            "Q": (new Asset({ image: "png/pipe/cornerbr.png" })),
+        },
+        map: [
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------V-------------V--V------",
+            "----------------V---------V-----V-------------V--------------------PHHHHHHHHHHHHHQ--V------",
+            "HHHHHHN---------V---------PHHHHHHHHHHHHHHHHHHHQ-------------------------------------V------",
+            "------V---------V---------------V---------------------------------------------------V------",
+            "HHHHN-V---------V---------------V--------------------------MHHHHHHHHHHHHHHHHHHHHHHHHVHHHHHH",
+            "----V-V---------PHHHHHHHHHHHHHHHQ--------------------------V------------------------V------",
+            "----V-V---------------------------------MHHHHHHHHHHHHHN----V------MHHHHHHHHHHHN-----V------",
+            "----V-PHHHHHHN--------------------------V-------------V----V------V-----------V-----V------",
+            "----PHN------V-------------------MHHHHHHVHHHHHHHHHN---PHHHHHHHHHHHHHHHHHHHHHHHHHHHHHV------",
+            "------V------V-------------------V------V---------V--------V------------------------V------",
+            "------V------V--------MHHHHHHHHHHHHHHHHHVHHHHHHHN-V----MHHHHHHHHHHN-----------------V------",
+            "------V------V--------V----------V------V-------V-V----V---V------PHHHHHHHHHHHHHHHHHVHHHHHH",
+            "------V------VHHHN----V------MHHHHHHHHHHQ-MHHHHHVHHHHHHVHHHQ------------------------V------",
+            "------V------V---V----V------V---PHHHHHHHHQ-----V------V----------------------------V--MHHH",
+            "HHHHHHVHHHHHHQ---V---MHHHHHHHQ------------------PHHHHHHQ----------------------------V--V---",
+            "------V----------V---VV------------------------------------------MHHHHHHN-----------V--V---",
+            "------VHHHHHHHHHHHN--PQ-----MHHHHHHHHN---------------------------V------V----MHHHHHHQ--V---",
+            "------V----------VV---------V--------V----MHN-------------MHHHN--V------V----V---------V---",
+            "------VHHHHHHHHHHHVHHHHHN---V----MHHHQ----V-V----MHHHHHN--V---V--V------V----V---------V---",
+            "------V----------VV-----V---V----V------MHVHHHN--V-----PHHVHHHVHHHHHHHHHQ----V------MHHQ---",
+            "HHHHHHVHHHHHHHHHHQV--MHHVHHHQ----V------V-V-V-V--V--------V---V--V-----------V------V------",
+            "------V-----------V--V--V--------PHHHHHHHHHHVHQ--V--------V---V--V-----------V------V------",
+            "------V-----------V--V--V---------------V-V-V----PHHHHHHN-V---V--V-----------PHHHHHHVHHHHHH",
+            "------V-----------V--V--V---------------V-V-V-----------V-V---V--V------------------V------",
+            "------V-----------V--V--V---------------V-V-V-----------V-V---V--V------------------V------",
+        ],
+        start: {
+            x: gameScale * 81, 
+            y: gameScale * 22, 
+            size: gameScale
+        },
+        win: {
+            requirements: {
+                x: gameScale * 80,
+                y: gameScale * 13
             },
             animation: (value, delta) => {
                 if (value < 1500) {
@@ -158,9 +225,12 @@ let loadLevel = function(number) {
     currentMap.position(levels[number].start.x, levels[number].start.y);
     moveX = 0;
     moveY = 0;
+    levelText.asset.text = "LEVEL " + (number + 1);
     backgroundLayer.assign(levelBackground);
     mapLayer.assign(currentMap);
     detailsLayer.assign(cactusBro);
+    hudLayer.assign(levelText);
+    Game.wait(() => { hudLayer.remove(levelText) }, 1000);
     state = "game";
     doPhysics = true;
     cactusAnimation.switch("idle");
@@ -195,7 +265,7 @@ let movementGameLoop = function(delta) {
 
     moveX = Math.max(-maxSpeed, Math.min(maxSpeed, moveX + (forceX * acceleration * (delta / 1000))));
     if (Math.abs(moveX) < 0.001) { moveX = 0}
-    moveY = Math.max(-maxSpeed, Math.min(maxSpeed, moveY + (gravity * (delta / 1000))));
+    moveY = Math.min(maxSpeed, moveY + (gravity * (delta / 1000)));
 
     currentMap.move(moveX * speed * sprint * (delta / 1000), moveY * speed * (delta / 1000));
 
@@ -282,7 +352,7 @@ let checkWin = function() {
         yes = false;
     }
 
-    if (levels[currentMapNumber].win.requirements.y && currentMap.y < levels[currentMapNumber].win.requirements.y) {
+    if (levels[currentMapNumber].win.requirements.y && currentMap.y > levels[currentMapNumber].win.requirements.y) {
         yes = false;
     }
 
@@ -343,10 +413,10 @@ Game.on("loop", ({ stamp, delta }) => {
 
 Controller.on("press", "key_ ", () => {
     if (state == "game" && touchingGround) {
-        moveY = -maxSpeed;
+        moveY = maxSpeed * -1.5;
     } else if (state == "start") {
         Layer.purgeAll()
-        Game.wait(() => { loadLevel(0); }, 500);
+        Game.wait(() => { loadLevel(1); }, 500);
         state = "";
     }
 })
