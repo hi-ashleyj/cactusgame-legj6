@@ -39,10 +39,16 @@ let loadStartScreen = function() {
 
 // ---- WIN SCREEN ---- //
 
+let chooseEnding = function() {
+    let endings = ["WIN", "FINISH", "DONE", "COMPLETE", "CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS"];
+    let choice = Math.floor(Math.random() * 5);
+    return endings[choice];
+};
+
 let showWinScreen = function() {
     Layer.purgeAll();
     let goHeader = new GameObject({ asset: (new Text({ text: "CACTUS", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 5 });
-    let goStatus = new GameObject({ asset: (new Text({ text: ["WIN", "FINISH", "DONE", "COMPLETE", "CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS CACTUS"][Math.floor(Math.random * 5)], font: "Press Start", size: 120, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 4 });
+    let goStatus = new GameObject({ asset: (new Text({ text: chooseEnding(), font: "Press Start", size: 120, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height / 2 });
     let goCTA = new GameObject({ asset: (new Text({ text: "PRESS SPACE TO MENU", font: "Press Start", size: 40, alignH: "center", alignV: "middle", fill: "#ffffff" })), x: Game.width / 2, y: Game.height * 4 / 5 });
 
     hudLayer.assign(goHeader, goStatus, goCTA);
@@ -136,7 +142,7 @@ let levels = [ // Level Design
             "OOOOB----------------------pqr-------MTTTTTTTTN----d------y---MTTTTTTTTTTN---MTTTTTTTJLOOOO",
             "OOOOB---------------------DEEEEEF----AOOOOOOOOB---DEEEF--DEEF-AOOOOOOOOOOB---AOOOOOOOOOOOOO",
             "OOOOB-b---y------y----b------------MJLOOOOOOOOKNz-------------AOOOOOOOOOOB---AOOOOOOOOOOOOO",
-            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTTTTTJJLOOOOOOOOOOOKITN-------MTTJLOOOOOOOOOOB---AOOOOOOOOOOOOO",
+            "OOOOKITTTTTTTTTTTTTTTTTTTTTTTTTTTTJLOOOOOOOOOOOKITN-------MTTJLOOOOOOOOOOB---AOOOOOOOOOOOOO",
             "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
             "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
             "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOB-------AOOOOOOOOOOOOOOB---AOOOOOOOOOOOOO",
@@ -498,15 +504,15 @@ Game.on("loop", ({ stamp, delta }) => {
             if (winAnimation) {
                 winAnimation(winProperty.value(), delta);
             }
-
-            if (currentMapNumber && levels[currentMapNumber] && levels[currentMapNumber].tick) {
-                levels[currentMapNumber].tick(stamp, delta, doPhysics);
-            }
             
             if (doPhysics) {
                 movementGameLoop(delta);
                 checkDeath();
                 checkWin();
+            }
+
+            if (currentMapNumber && levels[currentMapNumber] && levels[currentMapNumber].tick) {
+                levels[currentMapNumber].tick(stamp, delta, doPhysics);
             }
 
             break;
