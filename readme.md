@@ -15,9 +15,12 @@ Built using my own game engine for HTML5/Canvas
   
 ## It's not polished  
 I am aware. This is infact the point of the jam. It is a low effort game, and while suping up the engine was rather high-effort, once completed I left my single braincell in my pocket to finish the game.  
+
+## Maintainence?  
+Nope! That's it. I'm going to be archiving and leaving this game alone forever. That's why it's got "archive" at the top.
   
 ## Is there an itch.io link?  
-Maybe. I don't have one right now because I haven't submitted as I type this. If I can be bothered, it'll be here: \[not here yet\]  
+[It only took like a year, but there is now](https://hi-ashleyj.itch.io/legj6-cactusgame)
   
 ## Licence?  
 Special thanks to all people who made assets that I borrowed and then modified to make this game. Almost all of these are modified. Feel free to re-use these modified versions if you wish.  
